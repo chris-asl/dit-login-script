@@ -1,0 +1,54 @@
+#!/bin/bash
+# DIT linux login script
+# Changelog:
+# v. (1.1) - script now accepts username as parameter, if no parameter given a default username is used
+
+
+#default username to use (change to yours)
+usr="std10006"
+
+
+if [[ $# -ne 1 ]]; then
+	echo "Using default username \"$usr\"";
+elif [[ $# -eq 1 ]]; then
+	usr=$1
+	echo "Using username \"$usr\"";
+fi
+
+success=0
+pc_id=1
+max_pc_id=29
+
+
+linuxstr="linux"
+domstr=".di.uoa.gr"
+while [[ $success -eq 0 ]]; do
+	#iterate from 1 to 29, as it's the number of linux lab machines
+	#as seen here: http://cgi.di.uoa.gr/~ip/linux_lab_machines.html
+	completestr="$linuxstr"
+	if [[ $pc_id -le 9 ]]; then
+		completestr="${linuxstr}0$pc_id$domstr"
+	else
+		completestr="$linuxstr$pc_id$domstr"
+	fi
+	#try to connect
+	ssh_input="${usr}@$completestr"
+	printf "\nTrying to connect to $completestr as ${usr}...\n\n"
+	ssh "$ssh_input"
+	#if succeeded, end the loop
+	res=`echo $?`
+	if [[ $res -eq 0 ]]; then
+		let "success = 1"
+	fi
+	#else continue iterating
+	#check if we've reached the latest machine and connection did not succeed
+	if [[ $pc_id -eq 29 ]]; then
+		let "success = 1"
+	fi
+	let "pc_id=pc_id+1"
+done
+
+
+printf "\n\nDone..!\n\n\n"
+exit 0
+	
