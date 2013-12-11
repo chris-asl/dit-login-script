@@ -1,19 +1,72 @@
 #!/bin/bash
 # DIT linux login script
 # Changelog:
+# v. (1.2) - User can set the timeout interval (in seconds) for the ssh command
 # v. (1.1) - script now accepts username as parameter, if no parameter given a default username is used
 
 
+#default time-out interval (in seconds)
+timeout=20
 #default username to use (change to yours)
 usr="std10006"
 
+#numbers from 0 to 9
+renum='^[0-9]+$'
+#usernames must match stdXXYYY 
+reuser='^std[0-9]{5}$'
 
-if [[ $# -ne 1 ]]; then
-	echo "Using default username \"$usr\"";
-elif [[ $# -eq 1 ]]; then
-	usr=$1
-	echo "Using username \"$usr\"";
+#check arguments
+if [[ $# -eq 1 ]]; then
+	#check if argument is number or str
+	if [[ $1 =~ $renum ]]; then 
+		timeout=$1
+		echo "Time-out set to $1 second(s)"
+	else 
+		if ! [[ $1 =~ $reuser ]]; then
+			printf "Username must match stdXXYYY form and time-out must be a positive integer\nExiting ...\n"
+			exit -1;
+		else
+			usr=$1
+			echo "Using username \"$usr\""
+		fi
+	fi
+elif [[ $# -eq 2 ]]; then
+	#case in which the 1st argument is a string and probably matches the username regexpr
+	if  ! [[ $1 =~ $renum ]]; then 
+		if [[ $1 =~ $reuser ]]; then
+			usr=$1
+			echo "Using username \"$usr\""
+			if [[ $2 =~ $renum && $2 -gt 0 ]]; then
+				timeout=$2
+				echo "Time-out set to $1 second(s)"
+			else
+				echo "Time-out interval is needed ([>=0 integer values] are accepted only)"
+				exit -1;
+			fi
+		else
+			printf "Usage: {script} timeout username OR {script} username timeout\nUsername must match stdXXYYY form and time-out must be a positive integer\nExiting ...\n"
+			exit -1;
+		fi
+	#1st arg is probably the timeout
+	elif [[ $1 =~ $renum ]]; then
+		if [[ $1 -gt 0 ]]; then
+			timeout=$1
+			echo "Time-out set to $1 second(s)"
+		else
+			echo "Time-out interval is needed ([>0 integer values] are accepted only)"
+			exit -1;
+		fi
+		if [[ $2 =~ $reuser ]]; then
+			usr=$2
+			echo "Using username \"$usr\""
+		else
+			printf "Usage: {script} timeout username OR {script} username timeout\nUsername must match stdXXYYY form and time-out must be a positive integer\nExiting ...\n"
+			exit -1;
+		fi
+	fi
 fi
+
+
 
 success=0
 pc_id=1
@@ -32,9 +85,10 @@ while [[ $success -eq 0 ]]; do
 		completestr="$linuxstr$pc_id$domstr"
 	fi
 	#try to connect
+	ssh_options="-o ConnectTimeout=${timeout}"
 	ssh_input="${usr}@$completestr"
 	printf "\nTrying to connect to $completestr as ${usr}...\n\n"
-	ssh "$ssh_input"
+	ssh $ssh_options $ssh_input
 	#if succeeded, end the loop
 	res=`echo $?`
 	if [[ $res -eq 0 ]]; then
@@ -49,6 +103,6 @@ while [[ $success -eq 0 ]]; do
 done
 
 
-printf "\n\nDone..!\n\n\n"
+printf "\nDone..!\n\n"
 exit 0
 	
