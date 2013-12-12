@@ -1,5 +1,6 @@
 #!/bin/bash
 # DIT linux login script
+# Author: Chris Aslanoglou
 # Changelog:
 # v. (1.2) - User can set the timeout interval (in seconds) for the ssh command
 # v. (1.1) - script now accepts username as parameter, if no parameter given a default username is used
