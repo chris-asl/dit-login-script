@@ -2,6 +2,7 @@
 # DIT linux login script
 # Author: Chris Aslanoglou
 # Changelog:
+# v. (1.3) - Dynamic checking of linux machines
 # v. (1.2) - User can set the timeout interval (in seconds) for the ssh command
 # v. (1.1) - script now accepts username as parameter, if no parameter given a default username is used
 
@@ -13,16 +14,16 @@ usr="std10006"
 
 #numbers from 0 to 9
 renum='^[0-9]+$'
-#usernames must match stdXXYYY 
+#usernames must match stdXXYYY
 reuser='^std[0-9]{5}$'
 
 #check arguments
 if [[ $# -eq 1 ]]; then
 	#check if argument is number or str
-	if [[ $1 =~ $renum ]]; then 
+	if [[ $1 =~ $renum ]]; then
 		timeout=$1
 		echo "Time-out set to $1 second(s)"
-	else 
+	else
 		if ! [[ $1 =~ $reuser ]]; then
 			printf "Username must match stdXXYYY form and time-out must be a positive integer\nExiting ...\n"
 			exit -1;
@@ -33,7 +34,7 @@ if [[ $# -eq 1 ]]; then
 	fi
 elif [[ $# -eq 2 ]]; then
 	#case in which the 1st argument is a string and probably matches the username regexpr
-	if  ! [[ $1 =~ $renum ]]; then 
+	if  ! [[ $1 =~ $renum ]]; then
 		if [[ $1 =~ $reuser ]]; then
 			usr=$1
 			echo "Using username \"$usr\""
@@ -67,43 +68,30 @@ elif [[ $# -eq 2 ]]; then
 	fi
 fi
 
-
+# Get linux machines from http://cgi.di.uoa.gr/~ip/linux_lab_machines.html
+if [ ! -f ./linux_machines ]; then
+ 	wget -q http://cgi.di.uoa.gr/~ip/linux_lab_machines.html && cat linux_lab_machines.html | grep LI | awk '{print $2}' >> linux_machines
+	rm -f linux_lab_machines.html
+fi
 
 success=0
-pc_id=1
-max_pc_id=29
-
-
-linuxstr="linux"
-domstr=".di.uoa.gr"
-while [[ $success -eq 0 ]]; do
-	#iterate from 1 to 29, as it's the number of linux lab machines
-	#as seen here: http://cgi.di.uoa.gr/~ip/linux_lab_machines.html
-	completestr="$linuxstr"
-	if [[ $pc_id -le 9 ]]; then
-		completestr="${linuxstr}0$pc_id$domstr"
-	else
-		completestr="$linuxstr$pc_id$domstr"
-	fi
+for linux_machine in `cat linux_machines`; do
 	#try to connect
 	ssh_options="-o ConnectTimeout=${timeout}"
-	ssh_input="${usr}@$completestr"
-	printf "\nTrying to connect to $completestr as ${usr}...\n\n"
+	ssh_input="${usr}@${linux_machine}"
+	printf "\nTrying to connect to ${linux_machine} as ${usr}...\n\n"
 	ssh $ssh_options $ssh_input
 	#if succeeded, end the loop
 	res=`echo $?`
 	if [[ $res -eq 0 ]]; then
-		let "success = 1"
+		break
 	fi
 	#else continue iterating
-	#check if we've reached the latest machine and connection did not succeed
-	if [[ $pc_id -eq 29 ]]; then
-		let "success = 1"
-	fi
-	let "pc_id=pc_id+1"
 done
 
-
 printf "\nDone..!\n\n"
+# Remove linux machines file
+# It's better to check each time, in case there are changes
+rm -f ./linux_machines
 exit 0
-	
+
